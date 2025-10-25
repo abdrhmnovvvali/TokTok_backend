@@ -72,8 +72,8 @@ import { NotificationModule } from './modules/notification/notification.module';
         return {
           transport: {
             host: config.get('SMTP_HOST'),
-            port: config.get('SMTP_PORT'),
-            secure: false,
+            port: config.get<number>('SMTP_PORT'),
+            secure: config.get('SMTP_SECURE'),
             auth: {
               user: config.get('SMTP_USER'),
               pass: config.get('SMTP_PASS'),
