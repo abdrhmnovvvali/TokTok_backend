@@ -67,6 +67,7 @@ let MessageService = class MessageService {
         await this.participantRepo.update({ userId: user.id, chatId: chat.id }, { unreadCount: 0 });
         let messages = await this.messageRepo.find({
             where: {
+                isDeleted: false,
                 chatId: chat.id
             },
             relations: ["user", "user.profile", "user.profile.image", "media"],

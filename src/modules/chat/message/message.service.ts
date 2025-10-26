@@ -75,6 +75,7 @@ export class MessageService {
 
         let messages = await this.messageRepo.find({
             where: {
+                isDeleted:false,
                 chatId: chat.id
             },
             relations: ["user", "user.profile", "user.profile.image", "media"],
