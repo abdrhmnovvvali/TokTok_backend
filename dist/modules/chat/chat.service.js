@@ -156,13 +156,16 @@ let ChatService = class ChatService {
     async createSingleChat(params) {
         let myUser = this.cls.get("user");
         if (myUser.id === params.userId)
-            throw new common_1.BadRequestException("User id is valid");
+            throw new common_1.BadRequestException("User id is not valid");
         let user = await this.userService.findUser(params.userId);
         if (!user)
             throw new common_1.NotFoundException("User is not found");
         let isBan = await this.banService.checkBan(myUser.id, user.id);
         if (isBan)
-            throw new common_1.ForbiddenException("");
+            throw new common_1.ForbiddenException("You cannot chat with this user");
+        if (!params.content && !params.media) {
+            throw new common_1.BadRequestException("Either content or media must be provided");
+        }
         let request = false;
         if (user.isPrivate) {
             let access = await this.followService.checkFollow(myUser.id, user.id);
@@ -180,7 +183,7 @@ let ChatService = class ChatService {
             .getMany();
         let chat = myChats.find(chat => {
             return chat.participants?.some(participant => {
-                return participant.userId = user.id;
+                return participant.userId === user.id;
             });
         });
         if (!chat) {
@@ -194,7 +197,7 @@ let ChatService = class ChatService {
         }
         await this.messageService.createMessage(chat.id, { content: params.content, media: params.media });
         return {
-            message: "Chat created is successfully"
+            message: "Chat created successfully"
         };
     }
     async updateChatLastMessage(chatId, messageId) {
@@ -241,7 +244,7 @@ let ChatService = class ChatService {
             .orderBy('chat.updatedAt', 'DESC')
             .getOne();
         if (!chat)
-            throw new common_1.NotFoundException('error');
+            throw new common_1.NotFoundException('Chat not found');
         return {
             ...chat,
             unreadCount: chat.participants.find((participant) => participant.user.id === user.id)
@@ -288,7 +291,7 @@ let ChatService = class ChatService {
             throw new common_1.NotFoundException("Chat is not found");
         if (chat.adminId === myUser.id) {
             let participantIds = chat.participants.filter(participant => participant.userId !== myUser.id);
-            if (participantIds.length > 1) {
+            if (participantIds.length > 0) {
                 await this.chatRepo.update({ id: chat.id }, { adminId: participantIds[0].userId });
             }
             else {
@@ -330,9 +333,11 @@ let ChatService = class ChatService {
                 let check = chat.participants.find((participant) => participant.userId === userId);
                 return check || this.participantRepo.create({ userId });
             });
-            let deleteParticipant = chat.participants.filter((participant) => !participantIds.includes(participant.id));
+            let deleteParticipant = chat.participants.filter((participant) => !participantIds.includes(participant.userId));
             let deleteParticipantIds = deleteParticipant.map((participant) => participant.id);
-            await this.participantRepo.delete({ id: (0, typeorm_2.In)(deleteParticipantIds) });
+            if (deleteParticipantIds.length > 0) {
+                await this.participantRepo.delete({ id: (0, typeorm_2.In)(deleteParticipantIds) });
+            }
             chat.participants = participants;
         }
         await chat.save();

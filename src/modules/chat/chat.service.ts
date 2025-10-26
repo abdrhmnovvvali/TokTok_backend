@@ -156,7 +156,7 @@ export class ChatService {
     async createSingleChat(params: CreateSingleChatDto) {
         let myUser = this.cls.get<UserEntity>("user")
 
-        if (myUser.id === params.userId) throw new BadRequestException("User id is valid")
+        if (myUser.id === params.userId) throw new BadRequestException("User id is not valid")
 
         let user = await this.userService.findUser(params.userId)
 
@@ -164,7 +164,12 @@ export class ChatService {
 
         let isBan = await this.banService.checkBan(myUser.id, user.id)
 
-        if (isBan) throw new ForbiddenException("")
+        if (isBan) throw new ForbiddenException("You cannot chat with this user")
+
+        // Content və ya media-dan ən azı biri olmalıdır
+        if (!params.content && !params.media) {
+            throw new BadRequestException("Either content or media must be provided")
+        }
 
         let request = false
 
@@ -186,7 +191,7 @@ export class ChatService {
 
         let chat = myChats.find(chat => {
             return chat.participants?.some(participant => {
-                return participant.userId = user.id
+                return participant.userId === user.id
             })
         })
 
@@ -206,7 +211,7 @@ export class ChatService {
         await this.messageService.createMessage(chat.id, { content: params.content, media: params.media })
 
         return {
-            message: "Chat created is successfully"
+            message: "Chat created successfully"
         }
     }
 
@@ -256,7 +261,7 @@ export class ChatService {
             .orderBy('chat.updatedAt', 'DESC')
             .getOne();
 
-        if (!chat) throw new NotFoundException('error');
+        if (!chat) throw new NotFoundException('Chat not found');
 
         return {
             ...chat,
@@ -327,7 +332,7 @@ export class ChatService {
         if (chat.adminId === myUser.id) {
             let participantIds = chat.participants.filter(participant => participant.userId !== myUser.id)
 
-            if (participantIds.length > 1) {
+            if (participantIds.length > 0) {
                 await this.chatRepo.update({ id: chat.id }, { adminId: participantIds[0].userId });
             } else {
                 await this.chatRepo.delete({ id: chat.id });
@@ -383,15 +388,17 @@ export class ChatService {
             });
 
             let deleteParticipant = chat.participants.filter(
-                (participant) => !participantIds.includes(participant.id),
+                (participant) => !participantIds.includes(participant.userId),
             );
             let deleteParticipantIds = deleteParticipant.map(
                 (participant) => participant.id,
             );
-            await this.participantRepo.delete({ id: In(deleteParticipantIds) });
+            
+            if (deleteParticipantIds.length > 0) {
+                await this.participantRepo.delete({ id: In(deleteParticipantIds) });
+            }
 
             chat.participants = participants;
-
         }
         
         await chat.save();

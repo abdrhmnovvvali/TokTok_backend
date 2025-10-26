@@ -19,23 +19,30 @@ class CreateSingleChatDto {
     media;
     userId;
     static _OPENAPI_METADATA_FACTORY() {
-        return { content: { required: true, type: () => String, minLength: 1 }, media: { required: true, type: () => String, format: "uuid" }, userId: { required: true, type: () => Number, minimum: 1 } };
+        return { content: { required: false, type: () => String, minLength: 1 }, media: { required: false, type: () => String, format: "uuid" }, userId: { required: true, type: () => Number, minimum: 1 } };
     }
 }
 exports.CreateSingleChatDto = CreateSingleChatDto;
 __decorate([
-    (0, class_transformer_1.Type)(),
-    (0, class_validator_1.IsString)(),
     (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.MinLength)(1),
-    (0, swagger_1.ApiProperty)({ default: '' }),
+    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.MinLength)(1, { message: "Content cannot be empty" }),
+    (0, swagger_1.ApiProperty)({
+        required: false,
+        example: "Salam",
+        description: "Mesaj mətni"
+    }),
     __metadata("design:type", String)
 ], CreateSingleChatDto.prototype, "content", void 0);
 __decorate([
-    (0, class_transformer_1.Type)(),
-    (0, class_validator_1.IsUUID)(),
     (0, class_validator_1.IsOptional)(),
-    (0, swagger_1.ApiProperty)({ default: '' }),
+    (0, class_transformer_1.Transform)(({ value }) => value || undefined),
+    (0, class_validator_1.IsUUID)("4", { message: "Media must be a valid UUID" }),
+    (0, swagger_1.ApiProperty)({
+        required: false,
+        example: "550e8400-e29b-41d4-a716-446655440000",
+        description: "Media faylının ID-si",
+    }),
     __metadata("design:type", String)
 ], CreateSingleChatDto.prototype, "media", void 0);
 __decorate([

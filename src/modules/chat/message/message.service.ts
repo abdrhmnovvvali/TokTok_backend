@@ -27,50 +27,35 @@ export class MessageService {
         this.participantRepo = this.dataSource.getRepository(ParticipantEntity)
     }
 
-    async createMessage(chatId: number, params: CreateMessageDto) {
-        let myUser = this.cls.get<UserEntity>("user")
-
-        if (!params.content && !params.media) {
-            throw new BadRequestException("Content or media is required")
-        }
-
-        let chat = await this.chatService.findChat(chatId)
-
-        if (!chat) throw new NotFoundException("Chat is not found")
-
-        let checkParticipant = chat.participants.some(
-            (participant) => participant.userId === myUser.id,
-        );
-
-        if (!checkParticipant) throw new NotFoundException('Chat is not found');
-
-        let message = this.messageRepo.create({
-            content: params.content,
-            chatId,
-            media: { id: params.media },
-            userId: myUser.id
-        })
-
-        await message.save()
-
-        await this.participantRepo.increment({
-            chatId: chat.id,
-            userId: Not(myUser.id)
-        },
-            'unreadCount',
-            1
-        )
-        
-        let rooms = this.socketGateway.server.to(chat.participants.map((participant) => `user_${participant.userId}`));
-        rooms.emit('message-created', { id: message.id })
-
-        await this.chatService.updateChatLastMessage(chatId, message.id)
-
-        rooms.emit('chat-updated', { id: chat.id });
-
-        return message
-
+ async createMessage(chatId: number, params: { content?: string | null, media?: string | null }) {
+    // Content və ya media-dan ən azı biri olmalıdır
+    if (!params.content && !params.media) {
+        throw new BadRequestException("Either content or media must be provided");
     }
+
+    let user = this.cls.get<UserEntity>("user");
+
+    // Əgər media varsa, onun mövcudluğunu yoxlayın
+    if (params.media) {
+        // Media service-dən yoxlama (əgər varsa)
+        // const mediaExists = await this.mediaService.findOne(params.media);
+        // if (!mediaExists) throw new NotFoundException("Media not found");
+    }
+
+    const message = this.messageRepo.create({
+        chat: { id: chatId } as any,
+        user: { id: user.id } as any,
+        content: params.content ?? undefined,
+        media: params.media ? { id: params.media } as any : undefined,
+    });
+
+    await message.save();
+
+    // Chat-ın son mesajını yeniləyin
+    await this.chatService.updateChatLastMessage(chatId, message.id);
+
+    return message;
+}
 
     async chatMessages(chatId: number, params: PaginationDto) {
         let user = this.cls.get<UserEntity>("user")

@@ -38,31 +38,20 @@ let MessageService = class MessageService {
         this.participantRepo = this.dataSource.getRepository(Participant_entity_1.ParticipantEntity);
     }
     async createMessage(chatId, params) {
-        let myUser = this.cls.get("user");
         if (!params.content && !params.media) {
-            throw new common_1.BadRequestException("Content or media is required");
+            throw new common_1.BadRequestException("Either content or media must be provided");
         }
-        let chat = await this.chatService.findChat(chatId);
-        if (!chat)
-            throw new common_1.NotFoundException("Chat is not found");
-        let checkParticipant = chat.participants.some((participant) => participant.userId === myUser.id);
-        if (!checkParticipant)
-            throw new common_1.NotFoundException('Chat is not found');
-        let message = this.messageRepo.create({
-            content: params.content,
-            chatId,
-            media: { id: params.media },
-            userId: myUser.id
+        let user = this.cls.get("user");
+        if (params.media) {
+        }
+        const message = this.messageRepo.create({
+            chat: { id: chatId },
+            user: { id: user.id },
+            content: params.content ?? undefined,
+            media: params.media ? { id: params.media } : undefined,
         });
         await message.save();
-        await this.participantRepo.increment({
-            chatId: chat.id,
-            userId: (0, typeorm_2.Not)(myUser.id)
-        }, 'unreadCount', 1);
-        let rooms = this.socketGateway.server.to(chat.participants.map((participant) => `user_${participant.userId}`));
-        rooms.emit('message-created', { id: message.id });
         await this.chatService.updateChatLastMessage(chatId, message.id);
-        rooms.emit('chat-updated', { id: chat.id });
         return message;
     }
     async chatMessages(chatId, params) {

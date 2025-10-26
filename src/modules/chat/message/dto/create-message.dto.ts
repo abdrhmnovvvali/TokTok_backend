@@ -1,18 +1,25 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { Type } from "class-transformer";
+import { Transform } from "class-transformer";
 import { IsOptional, IsString, IsUUID, MinLength } from "class-validator";
 
 export class CreateMessageDto {
-    @Type()
-    @IsString()
-    @MinLength(1)
-    @IsOptional()
-    @ApiProperty({default : ''})
-    content : string;
+  @IsOptional()
+  @IsString()
+  @MinLength(1, { message: "Content cannot be empty" })
+  @ApiProperty({ 
+    required: false, 
+    example: "Salam", 
+    description: "Mesaj mətni" 
+  })
+  content?: string;
 
-    @Type()
-    @IsUUID()
-    @IsOptional()
-    @ApiProperty({default : ''})
-    media : string;
+  @IsOptional()
+  @Transform(({ value }) => value || undefined)
+  @IsUUID("4", { message: "Media must be a valid UUID" })
+  @ApiProperty({
+    required: false,
+    example: "550e8400-e29b-41d4-a716-446655440000",
+    description: "Media faylının ID-si",
+  })
+  media?: string;
 }

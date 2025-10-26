@@ -1,6 +1,5 @@
 import { MessageEntity } from "src/database/entity/Message.entity";
 import { DataSource } from "typeorm";
-import { CreateMessageDto } from "./dto/create-message.dto";
 import { ChatService } from "../chat.service";
 import { ClsService } from "nestjs-cls";
 import { PaginationDto } from "src/shared/dto/pagination.dto";
@@ -13,7 +12,10 @@ export declare class MessageService {
     private messageRepo;
     private participantRepo;
     constructor(dataSource: DataSource, chatService: ChatService, cls: ClsService, socketGateway: SocketGateway);
-    createMessage(chatId: number, params: CreateMessageDto): Promise<MessageEntity>;
+    createMessage(chatId: number, params: {
+        content?: string | null;
+        media?: string | null;
+    }): Promise<MessageEntity>;
     chatMessages(chatId: number, params: PaginationDto): Promise<MessageEntity[]>;
     deleteMessage(chatId: number, messageId: number): Promise<{
         message: string;

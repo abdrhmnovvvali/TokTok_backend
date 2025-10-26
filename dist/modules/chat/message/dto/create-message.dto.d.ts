@@ -1,4 +1,4 @@
 export declare class CreateMessageDto {
-    content: string;
-    media: string;
+    content?: string;
+    media?: string;
 }
