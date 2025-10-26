@@ -32,12 +32,17 @@ async function bootstrap() {
     .addTag('toktok')
     .addBearerAuth()
     .build();
-  const documentFactory = () => SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('docs', app, documentFactory, {
-    customCssUrl: `/swagger.dark.css`,
+const documentFactory = () => SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('', app, documentFactory, {
     swaggerOptions: {
       persistAuthorization: true,
     },
+    customCssUrl: 'https://unpkg.com/swagger-ui-dist/swagger-ui.css',
+    customJs: [
+      'https://unpkg.com/swagger-ui-dist/swagger-ui-bundle.js',
+      'https://unpkg.com/swagger-ui-dist/swagger-ui-standalone-preset.js',
+    ],
+    customfavIcon: 'https://unpkg.com/swagger-ui-dist/favicon-32x32.png'
   });
 
   await app.listen(process.env.PORT ?? 3002);
