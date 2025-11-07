@@ -14,6 +14,8 @@ import { PostsSelect } from "src/shared/selects/post.selects";
 import { PostActionService } from "./post_action/post_action.service";
 import { NotificationService } from "../notification/notification.service";
 import { NotificationEnum } from "src/shared/enums/Notification.enum";
+import { PostActionEntity } from "src/database/entity/PostAction.entity";
+import { PostActionTypes } from "src/shared/enums/Post.enum";
 
 @Injectable()
 export class PostService {
@@ -63,7 +65,7 @@ export class PostService {
             skip: page * limit
         });
 
-        return list
+        return this.attachIsLikeFlag(list, myUser.id);
     }
 
     async createPost(params: CreatePostDto) {
@@ -178,7 +180,9 @@ export class PostService {
 
         await this.postActionService.viewPost(post.id)
 
-        return post
+        const [postWithLike] = await this.attachIsLikeFlag([post], myUser.id);
+
+        return postWithLike
     }
 
     async myPosts(params: PaginationDto) {
@@ -199,7 +203,7 @@ export class PostService {
             skip: page * limit
         })
 
-        return list
+        return this.attachIsLikeFlag(list, user.id)
     }
 
     async userPosts(id: number, params: PaginationDto) {
@@ -240,7 +244,7 @@ export class PostService {
             skip: page * limit
         })
 
-        return list
+        return this.attachIsLikeFlag(list, myUser.id)
     }
 
     async deletePost(id: number) {
@@ -288,7 +292,7 @@ export class PostService {
             skip: page * limit
         })
 
-        return list
+        return this.attachIsLikeFlag(list, user.id)
     }
 
     async toggleArchive(id: number) {
@@ -317,5 +321,29 @@ export class PostService {
 
     async incrementField(postId: number, field: 'like' | 'view' | 'commentCount' | 'shared', value: number) {
         await this.postRepo.increment({ id: postId }, field, value)
+    }
+
+    private async attachIsLikeFlag(posts: PostEntity[], userId: number): Promise<PostEntity[]> {
+        if (!posts || posts.length === 0) {
+            return posts;
+        }
+
+        const likedActions = await this.dataSource.getRepository(PostActionEntity).find({
+            where: {
+                userId,
+                postId: In(posts.map(post => post.id)),
+                action: PostActionTypes.LIKE
+            },
+            select: {
+                postId: true
+            }
+        });
+
+        const likedPostIds = new Set(likedActions.map(action => action.postId));
+
+        return posts.map(post => {
+            post.isLike = likedPostIds.has(post.id);
+            return post;
+        });
     }
 }

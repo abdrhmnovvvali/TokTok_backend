@@ -8,6 +8,7 @@ export declare class StoryEntity extends BaseEntity {
     user: UserEntity;
     media: MediaEntity;
     view: number;
+    isView?: boolean;
     createdAt: Date;
     isActive: boolean;
     actions: StoryActionEntity[];

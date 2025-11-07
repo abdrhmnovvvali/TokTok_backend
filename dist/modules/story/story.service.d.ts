@@ -37,4 +37,5 @@ export declare class StoryService {
     viewStory(id: number): Promise<{
         message: string;
     }>;
+    private attachIsViewFlag;
 }

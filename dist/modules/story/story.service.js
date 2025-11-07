@@ -81,7 +81,7 @@ let StoryService = class StoryService {
             take: limit,
             skip: page * limit
         });
-        return list;
+        return this.attachIsViewFlag(list, myUser.id);
     }
     async myStoryActiveList() {
         let user = this.cls.get("user");
@@ -94,7 +94,7 @@ let StoryService = class StoryService {
             select: story_select_1.MyStorySelect,
             order: { createdAt: 'DESC' },
         });
-        return list;
+        return this.attachIsViewFlag(list, user.id);
     }
     async userStoryActiveList(id) {
         let myUser = this.cls.get("user");
@@ -121,7 +121,7 @@ let StoryService = class StoryService {
             select: story_select_1.StoryListSelect,
             order: { createdAt: 'DESC' },
         });
-        return list;
+        return this.attachIsViewFlag(list, myUser.id);
     }
     async myFollowerStoryList() {
         let user = this.cls.get("user");
@@ -138,7 +138,8 @@ let StoryService = class StoryService {
             relations: ['media', 'user', 'user.profile', 'user.profile.image'],
             select: story_select_1.StoryFolowingsSelect,
         });
-        const groupedStories = list.reduce((acc, story) => {
+        const listWithFlags = await this.attachIsViewFlag(list, user.id);
+        const groupedStories = listWithFlags.reduce((acc, story) => {
             if (!acc[story.userId]) {
                 acc[story.userId] = {
                     user: story.user,
@@ -274,6 +275,26 @@ let StoryService = class StoryService {
         return {
             message: "Story viewed successfully"
         };
+    }
+    async attachIsViewFlag(stories, userId) {
+        if (!stories || stories.length === 0) {
+            return stories;
+        }
+        const viewedActions = await this.storyActionRepo.find({
+            where: {
+                userId,
+                storyId: (0, typeorm_2.In)(stories.map(story => story.id)),
+                action: Story_enum_1.StoryActionTypes.VIEW
+            },
+            select: {
+                storyId: true
+            }
+        });
+        const viewedStoryIds = new Set(viewedActions.map(action => action.storyId));
+        return stories.map(story => {
+            story.isView = viewedStoryIds.has(story.id);
+            return story;
+        });
     }
 };
 exports.StoryService = StoryService;

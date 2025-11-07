@@ -26,6 +26,8 @@ const post_selects_1 = require("../../shared/selects/post.selects");
 const post_action_service_1 = require("./post_action/post_action.service");
 const notification_service_1 = require("../notification/notification.service");
 const Notification_enum_1 = require("../../shared/enums/Notification.enum");
+const PostAction_entity_1 = require("../../database/entity/PostAction.entity");
+const Post_enum_1 = require("../../shared/enums/Post.enum");
 let PostService = class PostService {
     dataSource;
     userService;
@@ -67,7 +69,7 @@ let PostService = class PostService {
             take: limit,
             skip: page * limit
         });
-        return list;
+        return this.attachIsLikeFlag(list, myUser.id);
     }
     async createPost(params) {
         const myUser = this.cls.get("user");
@@ -156,7 +158,8 @@ let PostService = class PostService {
             }
         }
         await this.postActionService.viewPost(post.id);
-        return post;
+        const [postWithLike] = await this.attachIsLikeFlag([post], myUser.id);
+        return postWithLike;
     }
     async myPosts(params) {
         let user = this.cls.get("user");
@@ -173,7 +176,7 @@ let PostService = class PostService {
             take: limit,
             skip: page * limit
         });
-        return list;
+        return this.attachIsLikeFlag(list, user.id);
     }
     async userPosts(id, params) {
         let myUser = this.cls.get("user");
@@ -205,7 +208,7 @@ let PostService = class PostService {
             take: limit,
             skip: page * limit
         });
-        return list;
+        return this.attachIsLikeFlag(list, myUser.id);
     }
     async deletePost(id) {
         let user = this.cls.get("user");
@@ -242,7 +245,7 @@ let PostService = class PostService {
             take: limit,
             skip: page * limit
         });
-        return list;
+        return this.attachIsLikeFlag(list, user.id);
     }
     async toggleArchive(id) {
         let user = this.cls.get("user");
@@ -264,6 +267,26 @@ let PostService = class PostService {
     }
     async incrementField(postId, field, value) {
         await this.postRepo.increment({ id: postId }, field, value);
+    }
+    async attachIsLikeFlag(posts, userId) {
+        if (!posts || posts.length === 0) {
+            return posts;
+        }
+        const likedActions = await this.dataSource.getRepository(PostAction_entity_1.PostActionEntity).find({
+            where: {
+                userId,
+                postId: (0, typeorm_2.In)(posts.map(post => post.id)),
+                action: Post_enum_1.PostActionTypes.LIKE
+            },
+            select: {
+                postId: true
+            }
+        });
+        const likedPostIds = new Set(likedActions.map(action => action.postId));
+        return posts.map(post => {
+            post.isLike = likedPostIds.has(post.id);
+            return post;
+        });
     }
 };
 exports.PostService = PostService;

@@ -78,7 +78,7 @@ export class StoryService {
             skip: page * limit
         })
 
-        return list
+        return this.attachIsViewFlag(list, myUser.id)
     }
 
     async myStoryActiveList() {
@@ -94,7 +94,7 @@ export class StoryService {
             order: { createdAt: 'DESC' },
         })
 
-        return list
+        return this.attachIsViewFlag(list, user.id)
     }
 
     async userStoryActiveList(id: number) {
@@ -128,7 +128,7 @@ export class StoryService {
             order: { createdAt: 'DESC' },
         })
 
-        return list
+        return this.attachIsViewFlag(list, myUser.id)
     }
 
     async myFollowerStoryList() {
@@ -150,7 +150,9 @@ export class StoryService {
             select: StoryFolowingsSelect,
         });
 
-        const groupedStories = list.reduce((acc, story) => {
+        const listWithFlags = await this.attachIsViewFlag(list, user.id);
+
+        const groupedStories = listWithFlags.reduce((acc, story) => {
             if (!acc[story.userId]) {
                 acc[story.userId] = {
                     user: story.user,
@@ -313,5 +315,29 @@ export class StoryService {
         return {
             message: "Story viewed successfully"
         }
+    }
+
+    private async attachIsViewFlag(stories: StoryEntity[], userId: number): Promise<StoryEntity[]> {
+        if (!stories || stories.length === 0) {
+            return stories;
+        }
+
+        const viewedActions = await this.storyActionRepo.find({
+            where: {
+                userId,
+                storyId: In(stories.map(story => story.id)),
+                action: StoryActionTypes.VIEW
+            },
+            select: {
+                storyId: true
+            }
+        });
+
+        const viewedStoryIds = new Set(viewedActions.map(action => action.storyId));
+
+        return stories.map(story => {
+            story.isView = viewedStoryIds.has(story.id);
+            return story;
+        });
     }
 }

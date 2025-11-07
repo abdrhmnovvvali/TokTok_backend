@@ -21,11 +21,12 @@ let StoryEntity = class StoryEntity extends typeorm_1.BaseEntity {
     user;
     media;
     view;
+    isView;
     createdAt;
     isActive;
     actions;
     static _OPENAPI_METADATA_FACTORY() {
-        return { id: { required: true, type: () => Number }, userId: { required: true, type: () => Number }, user: { required: true, type: () => require("./User.entity").UserEntity }, media: { required: true, type: () => require("./Media.entity").MediaEntity }, view: { required: true, type: () => Number }, createdAt: { required: true, type: () => Date }, isActive: { required: true, type: () => Boolean }, actions: { required: true, type: () => [require("./StoryAction.entity").StoryActionEntity] } };
+        return { id: { required: true, type: () => Number }, userId: { required: true, type: () => Number }, user: { required: true, type: () => require("./User.entity").UserEntity }, media: { required: true, type: () => require("./Media.entity").MediaEntity }, view: { required: true, type: () => Number }, isView: { required: false, type: () => Boolean }, createdAt: { required: true, type: () => Date }, isActive: { required: true, type: () => Boolean }, actions: { required: true, type: () => [require("./StoryAction.entity").StoryActionEntity] } };
     }
 };
 exports.StoryEntity = StoryEntity;

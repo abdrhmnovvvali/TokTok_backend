@@ -21,6 +21,8 @@ export class StoryEntity extends BaseEntity {
     @Column({default : 0})
     view : number;
 
+    isView?: boolean;
+
     @CreateDateColumn({type : 'timestamptz'})
     createdAt: Date;
 

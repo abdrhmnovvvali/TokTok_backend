@@ -36,4 +36,5 @@ export declare class PostService {
         message: string;
     }>;
     incrementField(postId: number, field: 'like' | 'view' | 'commentCount' | 'shared', value: number): Promise<void>;
+    private attachIsLikeFlag;
 }

@@ -10,6 +10,7 @@ export declare class PostEntity extends BaseEntity {
     userId: number;
     like: number;
     view: number;
+    isLike: boolean;
     commentCount: number;
     shared: number;
     createdAt: Date;

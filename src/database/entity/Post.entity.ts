@@ -23,6 +23,9 @@ export class PostEntity extends BaseEntity {
 
     @Column({ default: 0 })
     view: number;
+     @Column({ default: 0 })
+    isLike: boolean;
+
 
     @Column({ default: 0 })
     commentCount: number;

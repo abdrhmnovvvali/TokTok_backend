@@ -23,6 +23,7 @@ let PostEntity = class PostEntity extends typeorm_1.BaseEntity {
     userId;
     like;
     view;
+    isLike;
     commentCount;
     shared;
     createdAt;
@@ -33,7 +34,7 @@ let PostEntity = class PostEntity extends typeorm_1.BaseEntity {
     comments;
     taggedUsers;
     static _OPENAPI_METADATA_FACTORY() {
-        return { id: { required: true, type: () => Number }, content: { required: true, type: () => String }, isActive: { required: true, type: () => Boolean }, userId: { required: true, type: () => Number }, like: { required: true, type: () => Number }, view: { required: true, type: () => Number }, commentCount: { required: true, type: () => Number }, shared: { required: true, type: () => Number }, createdAt: { required: true, type: () => Date }, updatedAt: { required: true, type: () => Date }, user: { required: true, type: () => require("./User.entity").UserEntity }, media: { required: true, type: () => [require("./Media.entity").MediaEntity] }, actions: { required: true, type: () => [require("./PostAction.entity").PostActionEntity] }, comments: { required: true, type: () => [require("./PostComment.entity").PostCommentEntity] }, taggedUsers: { required: true, type: () => [require("./User.entity").UserEntity] } };
+        return { id: { required: true, type: () => Number }, content: { required: true, type: () => String }, isActive: { required: true, type: () => Boolean }, userId: { required: true, type: () => Number }, like: { required: true, type: () => Number }, view: { required: true, type: () => Number }, isLike: { required: true, type: () => Boolean }, commentCount: { required: true, type: () => Number }, shared: { required: true, type: () => Number }, createdAt: { required: true, type: () => Date }, updatedAt: { required: true, type: () => Date }, user: { required: true, type: () => require("./User.entity").UserEntity }, media: { required: true, type: () => [require("./Media.entity").MediaEntity] }, actions: { required: true, type: () => [require("./PostAction.entity").PostActionEntity] }, comments: { required: true, type: () => [require("./PostComment.entity").PostCommentEntity] }, taggedUsers: { required: true, type: () => [require("./User.entity").UserEntity] } };
     }
 };
 exports.PostEntity = PostEntity;
@@ -61,6 +62,10 @@ __decorate([
     (0, typeorm_1.Column)({ default: 0 }),
     __metadata("design:type", Number)
 ], PostEntity.prototype, "view", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ default: 0 }),
+    __metadata("design:type", Boolean)
+], PostEntity.prototype, "isLike", void 0);
 __decorate([
     (0, typeorm_1.Column)({ default: 0 }),
     __metadata("design:type", Number)
