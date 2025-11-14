@@ -16,6 +16,7 @@ export declare class StoryService {
     private notificationService;
     private storyRepo;
     private storyActionRepo;
+    private mediaRepo;
     constructor(dataSource: DataSource, cls: ClsService, followService: FollowService, banService: BanService, userService: UserService, notificationService: NotificationService);
     findStory(userId: number, storyId: number): Promise<StoryEntity>;
     create(params: CreateStoryDto): Promise<{

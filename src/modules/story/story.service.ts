@@ -1,7 +1,8 @@
 import { BadRequestException, ForbiddenException, forwardRef, Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectDataSource } from "@nestjs/typeorm";
 import { StoryEntity } from "src/database/entity/Story.entity";
-import { DataSource, In, Repository } from "typeorm";
+import { MediaEntity } from "src/database/entity/Media.entity";
+import { DataSource, In, Repository, IsNull } from "typeorm";
 import { CreateStoryDto } from "./dto/create-story.dto";
 import { ClsService } from "nestjs-cls";
 import { UserEntity } from "src/database/entity/User.entity";
@@ -19,6 +20,7 @@ import { NotificationEnum } from "src/shared/enums/Notification.enum";
 export class StoryService {
     private storyRepo: Repository<StoryEntity>
     private storyActionRepo: Repository<StoryActionEntity>
+    private mediaRepo: Repository<MediaEntity>
 
     constructor(
         @InjectDataSource() private dataSource: DataSource,
@@ -31,6 +33,7 @@ export class StoryService {
     ) {
         this.storyRepo = this.dataSource.getRepository(StoryEntity)
         this.storyActionRepo = this.dataSource.getRepository(StoryActionEntity)
+        this.mediaRepo = this.dataSource.getRepository(MediaEntity)
     }
 
     async findStory(userId : number, storyId : number){
@@ -49,12 +52,27 @@ export class StoryService {
     async create(params: CreateStoryDto) {
         let user = this.cls.get<UserEntity>("user")
 
+        // Verify media exists
+        let media = await this.mediaRepo.findOne({
+            where: { id: params.media }
+        })
+
+        if (!media) {
+            throw new NotFoundException("Media is not found")
+        }
+
         let story = this.storyRepo.create({
             userId: user.id,
-            media: { id: params.media }
+            isActive: true
         })
 
         await story.save()
+
+        // Update media to link with story (foreign key is on media side)
+        await this.mediaRepo.update(
+            { id: params.media },
+            { storyId: story.id }
+        )
 
         return {
             message: "Story is created successfully"
@@ -135,20 +153,29 @@ export class StoryService {
         let user = this.cls.get<UserEntity>("user");
 
         let followings = await this.followService.listFollowing(user.id);
-        if (followings.length === 0) {
-            throw new NotFoundException("Followings is not found");
+        
+        // Include own user ID in the list to show own stories too
+        let ids = followings.length > 0 
+            ? followings.map(item => item.to.id)
+            : [];
+        ids.push(user.id); // Add current user's ID
+
+        // Query stories with isActive = true or null (for old stories that might not have isActive set)
+        // Use query builder to ensure media relation exists
+        let list = await this.storyRepo
+            .createQueryBuilder('story')
+            .innerJoinAndSelect('story.media', 'media')
+            .innerJoinAndSelect('story.user', 'user')
+            .leftJoinAndSelect('user.profile', 'profile')
+            .leftJoinAndSelect('profile.image', 'image')
+            .where('story.userId IN (:...ids)', { ids })
+            .andWhere('(story.isActive = :isActive OR story.isActive IS NULL)', { isActive: true })
+            .orderBy('story.createdAt', 'DESC')
+            .getMany();
+
+        if (list.length === 0) {
+            return [];
         }
-
-        let ids = followings.map(item => item.to.id);
-
-        let list = await this.storyRepo.find({
-            where: {
-                userId: In(ids),
-                isActive: true
-            },
-            relations: ['media', 'user', 'user.profile', 'user.profile.image'],
-            select: StoryFolowingsSelect,
-        });
 
         const listWithFlags = await this.attachIsViewFlag(list, user.id);
 
@@ -317,7 +344,7 @@ export class StoryService {
         }
     }
 
-    private async attachIsViewFlag(stories: StoryEntity[], userId: number): Promise<StoryEntity[]> {
+    private async attachIsViewFlag<T extends StoryEntity>(stories: T[], userId: number): Promise<T[]> {
         if (!stories || stories.length === 0) {
             return stories;
         }
@@ -335,9 +362,12 @@ export class StoryService {
 
         const viewedStoryIds = new Set(viewedActions.map(action => action.storyId));
 
-        return stories.map(story => {
-            story.isView = viewedStoryIds.has(story.id);
-            return story;
+        stories.forEach(story => {
+            Object.assign(story, {
+                isView: viewedStoryIds.has(story.id)
+            });
         });
+
+        return stories;
     }
 }

@@ -16,6 +16,7 @@ exports.StoryService = void 0;
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const Story_entity_1 = require("../../database/entity/Story.entity");
+const Media_entity_1 = require("../../database/entity/Media.entity");
 const typeorm_2 = require("typeorm");
 const nestjs_cls_1 = require("nestjs-cls");
 const story_select_1 = require("../../shared/selects/story.select");
@@ -35,6 +36,7 @@ let StoryService = class StoryService {
     notificationService;
     storyRepo;
     storyActionRepo;
+    mediaRepo;
     constructor(dataSource, cls, followService, banService, userService, notificationService) {
         this.dataSource = dataSource;
         this.cls = cls;
@@ -44,6 +46,7 @@ let StoryService = class StoryService {
         this.notificationService = notificationService;
         this.storyRepo = this.dataSource.getRepository(Story_entity_1.StoryEntity);
         this.storyActionRepo = this.dataSource.getRepository(StoryAction_entity_1.StoryActionEntity);
+        this.mediaRepo = this.dataSource.getRepository(Media_entity_1.MediaEntity);
     }
     async findStory(userId, storyId) {
         let story = await this.storyRepo.findOne({
@@ -58,11 +61,18 @@ let StoryService = class StoryService {
     }
     async create(params) {
         let user = this.cls.get("user");
+        let media = await this.mediaRepo.findOne({
+            where: { id: params.media }
+        });
+        if (!media) {
+            throw new common_1.NotFoundException("Media is not found");
+        }
         let story = this.storyRepo.create({
             userId: user.id,
-            media: { id: params.media }
+            isActive: true
         });
         await story.save();
+        await this.mediaRepo.update({ id: params.media }, { storyId: story.id });
         return {
             message: "Story is created successfully"
         };
@@ -126,18 +136,23 @@ let StoryService = class StoryService {
     async myFollowerStoryList() {
         let user = this.cls.get("user");
         let followings = await this.followService.listFollowing(user.id);
-        if (followings.length === 0) {
-            throw new common_1.NotFoundException("Followings is not found");
+        let ids = followings.length > 0
+            ? followings.map(item => item.to.id)
+            : [];
+        ids.push(user.id);
+        let list = await this.storyRepo
+            .createQueryBuilder('story')
+            .innerJoinAndSelect('story.media', 'media')
+            .innerJoinAndSelect('story.user', 'user')
+            .leftJoinAndSelect('user.profile', 'profile')
+            .leftJoinAndSelect('profile.image', 'image')
+            .where('story.userId IN (:...ids)', { ids })
+            .andWhere('(story.isActive = :isActive OR story.isActive IS NULL)', { isActive: true })
+            .orderBy('story.createdAt', 'DESC')
+            .getMany();
+        if (list.length === 0) {
+            return [];
         }
-        let ids = followings.map(item => item.to.id);
-        let list = await this.storyRepo.find({
-            where: {
-                userId: (0, typeorm_2.In)(ids),
-                isActive: true
-            },
-            relations: ['media', 'user', 'user.profile', 'user.profile.image'],
-            select: story_select_1.StoryFolowingsSelect,
-        });
         const listWithFlags = await this.attachIsViewFlag(list, user.id);
         const groupedStories = listWithFlags.reduce((acc, story) => {
             if (!acc[story.userId]) {
@@ -291,10 +306,12 @@ let StoryService = class StoryService {
             }
         });
         const viewedStoryIds = new Set(viewedActions.map(action => action.storyId));
-        return stories.map(story => {
-            story.isView = viewedStoryIds.has(story.id);
-            return story;
+        stories.forEach(story => {
+            Object.assign(story, {
+                isView: viewedStoryIds.has(story.id)
+            });
         });
+        return stories;
     }
 };
 exports.StoryService = StoryService;
